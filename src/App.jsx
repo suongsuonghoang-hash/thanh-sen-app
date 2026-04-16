@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   MapPin,
   UtensilsCrossed,
@@ -12,6 +12,8 @@ import {
   Share2,
   Building2,
   Landmark,
+  X,
+  Image as ImageIcon,
 } from "lucide-react";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import MarkerClusterGroup from "react-leaflet-cluster";
@@ -67,6 +69,10 @@ export default function App() {
   const [loadingPlaces, setLoadingPlaces] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState("all");
 
+  const [selectedPlace, setSelectedPlace] = useState(null);
+  const [selectedPlaceImages, setSelectedPlaceImages] = useState([]);
+  const [loadingPlaceDetail, setLoadingPlaceDetail] = useState(false);
+
   useEffect(() => {
     fetchPlaces();
   }, []);
@@ -87,6 +93,33 @@ export default function App() {
     }
 
     setLoadingPlaces(false);
+  }
+
+  async function openPlaceDetail(place) {
+    setSelectedPlace(place);
+    setSelectedPlaceImages([]);
+    setLoadingPlaceDetail(true);
+
+    const { data, error } = await supabase
+      .from("place_images")
+      .select("*")
+      .eq("place_id", place.id)
+      .order("sort_order", { ascending: true });
+
+    if (error) {
+      console.error("Lỗi tải ảnh địa điểm:", error);
+      setSelectedPlaceImages([]);
+    } else {
+      setSelectedPlaceImages(data || []);
+    }
+
+    setLoadingPlaceDetail(false);
+  }
+
+  function closePlaceDetail() {
+    setSelectedPlace(null);
+    setSelectedPlaceImages([]);
+    setLoadingPlaceDetail(false);
   }
 
   function goToCategory(category) {
@@ -168,87 +201,107 @@ export default function App() {
       : [];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-red-50 via-amber-50 to-white p-4">
-      <div className="mx-auto max-w-sm overflow-hidden rounded-[2rem] border border-red-100 bg-white shadow-2xl">
-        <Header />
+    <>
+      <div className="min-h-screen bg-gradient-to-b from-red-50 via-amber-50 to-white p-4">
+        <div className="mx-auto max-w-sm overflow-hidden rounded-[2rem] border border-red-100 bg-white shadow-2xl">
+          <Header />
 
-        <div className="border-b border-gray-100 px-4 py-3">
-          <div className="flex items-center gap-2 rounded-2xl bg-gray-50 px-3 py-2">
-            <Search className="h-4 w-4 text-gray-400" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Tìm địa điểm..."
-              className="w-full bg-transparent text-sm outline-none"
-            />
+          <div className="border-b border-gray-100 px-4 py-3">
+            <div className="flex items-center gap-2 rounded-2xl bg-gray-50 px-3 py-2">
+              <Search className="h-4 w-4 text-gray-400" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Tìm địa điểm..."
+                className="w-full bg-transparent text-sm outline-none"
+              />
+            </div>
           </div>
+
+          <div className="min-h-[560px] px-4 py-4">
+            {active === "home" && (
+              <Home
+                goToCategory={goToCategory}
+                stats={stats}
+                loading={loadingPlaces}
+                latestPlaces={filteredPlaces.slice(0, 3)}
+                onOpenPlace={openPlaceDetail}
+              />
+            )}
+
+            {active === "places" && (
+              <Places
+                loading={loadingPlaces}
+                historicalItems={visibleHistoricalPlaces}
+                tourismItems={visibleTourismPlaces}
+                cultureItems={visibleCulturePlaces}
+                selectedCategory={selectedCategory}
+                clearFilter={() => setSelectedCategory("all")}
+                onOpenPlace={openPlaceDetail}
+              />
+            )}
+
+            {active === "food" && (
+              <Food
+                loading={loadingPlaces}
+                items={visibleFoodPlaces}
+                selectedCategory={selectedCategory}
+                clearFilter={() => setSelectedCategory("all")}
+                onOpenPlace={openPlaceDetail}
+              />
+            )}
+
+            {active === "map" && (
+              <MapSection
+                loading={loadingPlaces}
+                places={filteredPlaces}
+                onOpenPlace={openPlaceDetail}
+              />
+            )}
+
+            {active === "contact" && <Contact />}
+          </div>
+
+          <nav className="grid grid-cols-5 border-t border-gray-100 bg-white">
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = active === tab.id;
+
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => {
+                    setActive(tab.id);
+                    if (tab.id === "home" || tab.id === "map" || tab.id === "contact") {
+                      setSelectedCategory("all");
+                    }
+                  }}
+                  className={`flex flex-col items-center gap-1 px-2 py-3 text-[11px] transition ${
+                    isActive ? "text-red-600" : "text-gray-500"
+                  }`}
+                >
+                  <Icon className={`h-5 w-5 ${isActive ? "scale-110" : ""}`} />
+                  <span className={isActive ? "font-semibold" : "font-medium"}>
+                    {tab.label}
+                  </span>
+                </button>
+              );
+            })}
+          </nav>
         </div>
-
-        <div className="min-h-[560px] px-4 py-4">
-          {active === "home" && (
-            <Home
-              goToCategory={goToCategory}
-              stats={stats}
-              loading={loadingPlaces}
-              latestPlaces={filteredPlaces.slice(0, 3)}
-            />
-          )}
-
-          {active === "places" && (
-            <Places
-              loading={loadingPlaces}
-              historicalItems={visibleHistoricalPlaces}
-              tourismItems={visibleTourismPlaces}
-              cultureItems={visibleCulturePlaces}
-              selectedCategory={selectedCategory}
-              clearFilter={() => setSelectedCategory("all")}
-            />
-          )}
-
-          {active === "food" && (
-            <Food
-              loading={loadingPlaces}
-              items={visibleFoodPlaces}
-              selectedCategory={selectedCategory}
-              clearFilter={() => setSelectedCategory("all")}
-            />
-          )}
-
-          {active === "map" && (
-            <MapSection loading={loadingPlaces} places={filteredPlaces} />
-          )}
-
-          {active === "contact" && <Contact />}
-        </div>
-
-        <nav className="grid grid-cols-5 border-t border-gray-100 bg-white">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = active === tab.id;
-
-            return (
-              <button
-                key={tab.id}
-                onClick={() => {
-                  setActive(tab.id);
-                  if (tab.id === "home" || tab.id === "map" || tab.id === "contact") {
-                    setSelectedCategory("all");
-                  }
-                }}
-                className={`flex flex-col items-center gap-1 px-2 py-3 text-[11px] transition ${
-                  isActive ? "text-red-600" : "text-gray-500"
-                }`}
-              >
-                <Icon className={`h-5 w-5 ${isActive ? "scale-110" : ""}`} />
-                <span className={isActive ? "font-semibold" : "font-medium"}>
-                  {tab.label}
-                </span>
-              </button>
-            );
-          })}
-        </nav>
       </div>
-    </div>
+
+      <AnimatePresence>
+        {selectedPlace && (
+          <PlaceDetailModal
+            place={selectedPlace}
+            images={selectedPlaceImages}
+            loading={loadingPlaceDetail}
+            onClose={closePlaceDetail}
+          />
+        )}
+      </AnimatePresence>
+    </>
   );
 }
 
@@ -258,7 +311,7 @@ function Header() {
       <div
         className="h-48 w-full bg-cover bg-center"
         style={{
-          backgroundImage: "url('banner.jpg')",
+          backgroundImage: "url('/banner.jpg')",
         }}
       />
 
@@ -277,7 +330,7 @@ function Header() {
   );
 }
 
-function Home({ goToCategory, stats, loading, latestPlaces }) {
+function Home({ goToCategory, stats, loading, latestPlaces, onOpenPlace }) {
   const cards = [
     {
       label: "Di tích lịch sử",
@@ -335,7 +388,9 @@ function Home({ goToCategory, stats, loading, latestPlaces }) {
 
       <section className="rounded-3xl bg-gray-50 p-4">
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-bold text-gray-800">Nổi bật hôm nay</h2>
+          <h2 className="text-sm font-bold text-gray-800">
+            Tin tức & sự kiện nổi bật
+          </h2>
           <span className="text-xs text-red-600">Xem nhanh</span>
         </div>
 
@@ -346,17 +401,22 @@ function Home({ goToCategory, stats, loading, latestPlaces }) {
             {latestPlaces.map((item) => {
               const meta = categoryMeta[item.category] || categoryMeta.tourism;
               return (
-                <HighlightItem
+                <button
                   key={item.id}
-                  title={item.name}
-                  subtitle={item.description || meta.label}
-                  icon={meta.icon}
-                />
+                  onClick={() => onOpenPlace(item)}
+                  className="block w-full text-left"
+                >
+                  <HighlightItem
+                    title={item.name}
+                    subtitle={item.description || meta.label}
+                    icon={meta.icon}
+                  />
+                </button>
               );
             })}
           </div>
         ) : (
-          <EmptyState text="Chưa có dữ liệu hiển thị." />
+          <EmptyState text="Chưa có tin tức hoặc sự kiện." />
         )}
       </section>
     </motion.div>
@@ -370,6 +430,7 @@ function Places({
   cultureItems,
   selectedCategory,
   clearFilter,
+  onOpenPlace,
 }) {
   if (loading) {
     return (
@@ -402,21 +463,33 @@ function Places({
       )}
 
       {(isAll || selectedCategory === "historical") && (
-        <CategoryBlock title="Di tích lịch sử" items={historicalItems} />
+        <CategoryBlock
+          title="Di tích lịch sử"
+          items={historicalItems}
+          onOpenPlace={onOpenPlace}
+        />
       )}
 
       {(isAll || selectedCategory === "tourism") && (
-        <CategoryBlock title="Địa điểm du lịch" items={tourismItems} />
+        <CategoryBlock
+          title="Địa điểm du lịch"
+          items={tourismItems}
+          onOpenPlace={onOpenPlace}
+        />
       )}
 
       {(isAll || selectedCategory === "culture") && (
-        <CategoryBlock title="Nhà văn hoá" items={cultureItems} />
+        <CategoryBlock
+          title="Nhà văn hoá"
+          items={cultureItems}
+          onOpenPlace={onOpenPlace}
+        />
       )}
     </div>
   );
 }
 
-function Food({ loading, items, selectedCategory, clearFilter }) {
+function Food({ loading, items, selectedCategory, clearFilter, onOpenPlace }) {
   if (loading) {
     return (
       <div className="space-y-3">
@@ -446,7 +519,9 @@ function Food({ loading, items, selectedCategory, clearFilter }) {
       )}
 
       {items.length ? (
-        items.map((item) => <PlaceCard key={item.id} item={item} />)
+        items.map((item) => (
+          <PlaceCard key={item.id} item={item} onOpen={onOpenPlace} />
+        ))
       ) : (
         <EmptyState text="Chưa có dữ liệu địa điểm ăn uống." />
       )}
@@ -454,12 +529,14 @@ function Food({ loading, items, selectedCategory, clearFilter }) {
   );
 }
 
-function CategoryBlock({ title, items }) {
+function CategoryBlock({ title, items, onOpenPlace }) {
   return (
     <div className="space-y-3">
       <h3 className="text-sm font-bold text-gray-800">{title}</h3>
       {items.length ? (
-        items.map((item) => <PlaceCard key={item.id} item={item} />)
+        items.map((item) => (
+          <PlaceCard key={item.id} item={item} onOpen={onOpenPlace} />
+        ))
       ) : (
         <EmptyState text={`Chưa có dữ liệu ${title.toLowerCase()}.`} />
       )}
@@ -467,7 +544,7 @@ function CategoryBlock({ title, items }) {
   );
 }
 
-function PlaceCard({ item }) {
+function PlaceCard({ item, onOpen }) {
   const meta = categoryMeta[item.category] || categoryMeta.tourism;
 
   return (
@@ -480,9 +557,12 @@ function PlaceCard({ item }) {
           <div className="mb-2 inline-block rounded-full bg-red-50 px-3 py-1 text-[11px] font-semibold text-red-600">
             {meta.badge}
           </div>
-          <h3 className="text-sm font-bold leading-6 text-gray-800">
+          <button
+            onClick={() => onOpen(item)}
+            className="block text-left text-sm font-bold leading-6 text-gray-800 hover:text-red-600"
+          >
             {item.name}
-          </h3>
+          </button>
         </div>
 
         <div className="flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">
@@ -505,14 +585,14 @@ function PlaceCard({ item }) {
 
       <div className="mt-4 grid grid-cols-3 gap-2">
         <MiniAction icon={Navigation} label="Chỉ đường" href={item.map} />
-        <MiniAction icon={Phone} label="Liên hệ" />
+        <MiniAction icon={ImageIcon} label="Chi tiết" onClick={() => onOpen(item)} />
         <MiniAction icon={Share2} label="Chia sẻ" />
       </div>
     </motion.div>
   );
 }
 
-function MapSection({ loading, places }) {
+function MapSection({ loading, places, onOpenPlace }) {
   if (loading) {
     return (
       <div className="space-y-4">
@@ -520,7 +600,7 @@ function MapSection({ loading, places }) {
           title="Bản đồ số"
           subtitle="Đang tải dữ liệu từ bảng places..."
         />
-        <div className="rounded-[1.75rem] border border-red-100 bg-white p-6 shadow-sm text-sm text-gray-500">
+        <div className="rounded-[1.75rem] border border-red-100 bg-white p-6 text-sm text-gray-500 shadow-sm">
           Đang tải bản đồ...
         </div>
       </div>
@@ -567,7 +647,15 @@ function MapSection({ loading, places }) {
               >
                 <Popup>
                   <div style={{ minWidth: "180px" }}>
-                    <div style={{ fontWeight: 700, marginBottom: "6px" }}>
+                    <div
+                      style={{
+                        fontWeight: 700,
+                        marginBottom: "6px",
+                        cursor: "pointer",
+                        color: "#111827",
+                      }}
+                      onClick={() => onOpenPlace(item)}
+                    >
                       {item.name}
                     </div>
 
@@ -585,16 +673,32 @@ function MapSection({ loading, places }) {
                       <div style={{ marginBottom: "8px" }}>{item.description}</div>
                     )}
 
-                    {item.map && (
-                      <a
-                        href={item.map}
-                        target="_blank"
-                        rel="noreferrer"
-                        style={{ color: "#dc2626", textDecoration: "underline" }}
+                    <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                      {item.map && (
+                        <a
+                          href={item.map}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{ color: "#dc2626", textDecoration: "underline" }}
+                        >
+                          Chỉ đường
+                        </a>
+                      )}
+
+                      <button
+                        onClick={() => onOpenPlace(item)}
+                        style={{
+                          color: "#dc2626",
+                          textDecoration: "underline",
+                          background: "transparent",
+                          border: "none",
+                          padding: 0,
+                          cursor: "pointer",
+                        }}
                       >
-                        Chỉ đường
-                      </a>
-                    )}
+                        Xem chi tiết
+                      </button>
+                    </div>
                   </div>
                 </Popup>
               </Marker>
@@ -612,6 +716,129 @@ function MapSection({ loading, places }) {
         </div>
       </div>
     </div>
+  );
+}
+
+function PlaceDetailModal({ place, images, loading, onClose }) {
+  const meta = categoryMeta[place.category] || categoryMeta.tourism;
+
+  return (
+    <motion.div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-3 sm:items-center"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+    >
+      <motion.div
+        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white shadow-2xl"
+        initial={{ y: 40, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 40, opacity: 0 }}
+      >
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-4 py-3">
+          <div>
+            <p className="text-xs text-gray-500">{meta.label}</p>
+            <h2 className="text-lg font-bold text-gray-900">{place.name}</h2>
+          </div>
+
+          <button
+            onClick={onClose}
+            className="rounded-xl border px-3 py-2 text-sm text-gray-600"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="space-y-4 p-4">
+          {place.description && (
+            <p className="text-sm leading-6 text-gray-700">{place.description}</p>
+          )}
+
+          {place.address && (
+            <div className="rounded-2xl bg-gray-50 p-3 text-sm text-gray-600">
+              <strong>Địa chỉ:</strong> {place.address}
+            </div>
+          )}
+
+          {(place.opening_hours || place.ticket_price) && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {place.opening_hours && (
+                <div className="rounded-2xl bg-gray-50 p-3 text-sm text-gray-600">
+                  <strong>Giờ mở cửa:</strong> {place.opening_hours}
+                </div>
+              )}
+
+              {place.ticket_price && (
+                <div className="rounded-2xl bg-gray-50 p-3 text-sm text-gray-600">
+                  <strong>Giá vé:</strong> {place.ticket_price}
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <ImageIcon className="h-4 w-4 text-red-600" />
+              <h3 className="text-sm font-bold text-gray-800">Hình ảnh giới thiệu</h3>
+            </div>
+
+            {loading ? (
+              <div className="rounded-2xl bg-gray-50 p-6 text-center text-sm text-gray-500">
+                Đang tải hình ảnh...
+              </div>
+            ) : images.length ? (
+              <div className="space-y-3">
+                {images.map((img) => (
+                  <div
+                    key={img.id}
+                    className="overflow-hidden rounded-2xl border border-gray-100"
+                  >
+                    <img
+                      src={img.image_url}
+                      alt={img.caption || place.name}
+                      className="h-56 w-full object-cover"
+                    />
+                    {img.caption && (
+                      <div className="px-3 py-2 text-sm text-gray-600">
+                        {img.caption}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-6 text-center text-sm text-gray-500">
+                Chưa có hình ảnh giới thiệu cho địa điểm này.
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            {place.map ? (
+              <a
+                href={place.map}
+                target="_blank"
+                rel="noreferrer"
+                className="rounded-2xl bg-red-600 px-4 py-3 text-center text-sm font-semibold text-white"
+              >
+                Chỉ đường
+              </a>
+            ) : (
+              <div className="rounded-2xl bg-gray-100 px-4 py-3 text-center text-sm text-gray-400">
+                Chưa có link chỉ đường
+              </div>
+            )}
+
+            <button
+              onClick={onClose}
+              className="rounded-2xl border px-4 py-3 text-sm font-semibold text-gray-700"
+            >
+              Đóng
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
@@ -676,7 +903,7 @@ function ActionButton({ icon: Icon, label }) {
   );
 }
 
-function MiniAction({ icon: Icon, label, href }) {
+function MiniAction({ icon: Icon, label, href, onClick }) {
   const classes =
     "rounded-2xl border border-gray-200 px-3 py-2 text-[11px] font-medium text-gray-600 transition hover:border-red-300 hover:text-red-600";
 
@@ -692,7 +919,7 @@ function MiniAction({ icon: Icon, label, href }) {
   }
 
   return (
-    <button className={classes}>
+    <button className={classes} onClick={onClick}>
       <span className="flex items-center justify-center gap-1.5">
         <Icon className="h-3.5 w-3.5" />
         {label}
