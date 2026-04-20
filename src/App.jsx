@@ -86,11 +86,16 @@ export default function App() {
       .order("created_at", { ascending: false });
 
     if (error) {
-      console.error("Lỗi tải places:", error);
-      setPlaces([]);
-    } else {
-      setPlaces(data || []);
-    }
+  console.error("Lỗi tải places:", error);
+  console.error("error.message =", error.message);
+  console.error("error.details =", error.details);
+  console.error("error.hint =", error.hint);
+  console.error("error.code =", error.code);
+  setPlaces([]);
+} else {
+  console.log("data =", data);
+  setPlaces(data || []);
+}
 
     setLoadingPlaces(false);
   }
@@ -199,7 +204,10 @@ export default function App() {
     selectedCategory === "all" || selectedCategory === "food"
       ? foodPlaces
       : [];
-
+useEffect(() => {
+  console.log("places:", places);
+  console.log("historicalPlaces:", historicalPlaces);
+}, [places, historicalPlaces]);
   return (
     <>
       <div className="min-h-screen bg-gradient-to-b from-red-50 via-amber-50 to-white p-4">
@@ -302,7 +310,7 @@ export default function App() {
         )}
       </AnimatePresence>
     </>
-  );
+  )
 }
 
 function Header() {
