@@ -36,6 +36,8 @@ export default function AdminPage() {
 
   const [message, setMessage] = useState("");
   const [activeTab, setActiveTab] = useState("places");
+  const [placeCategoryTab, setPlaceCategoryTab] = useState("all");
+  const [imageCategoryTab, setImageCategoryTab] = useState("all");
 
   const [places, setPlaces] = useState([]);
   const [placeImages, setPlaceImages] = useState([]);
@@ -202,6 +204,7 @@ export default function AdminPage() {
     });
 
     setActiveTab("places");
+    setPlaceCategoryTab(item.category || "all");
     setMessage("");
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -390,17 +393,30 @@ export default function AdminPage() {
     }
   }
 
+  const filteredPlaces = useMemo(() => {
+    if (placeCategoryTab === "all") return places;
+    return places.filter((item) => item.category === placeCategoryTab);
+  }, [places, placeCategoryTab]);
+
+  const filteredPlaceImages = useMemo(() => {
+    if (imageCategoryTab === "all") return placeImages;
+
+    return placeImages.filter(
+      (item) => item.places?.category === imageCategoryTab
+    );
+  }, [placeImages, imageCategoryTab]);
+
   const imageGroups = useMemo(() => {
     const grouped = {};
 
-    for (const item of placeImages) {
+    for (const item of filteredPlaceImages) {
       const placeName = item.places?.name || "Không rõ địa điểm";
       if (!grouped[placeName]) grouped[placeName] = [];
       grouped[placeName].push(item);
     }
 
     return grouped;
-  }, [placeImages]);
+  }, [filteredPlaceImages]);
 
   if (!session) {
     return (
@@ -485,329 +501,407 @@ export default function AdminPage() {
         </div>
 
         {activeTab === "places" && (
-          <div className="grid gap-6 lg:grid-cols-[430px_1fr]">
-            <div className="rounded-3xl bg-white p-5 shadow">
-              <h2 className="mb-4 text-xl font-bold">
-                {editingPlaceId ? "Sửa địa điểm" : "Thêm địa điểm"}
-              </h2>
-
-              <form onSubmit={handlePlaceSave} className="space-y-3">
-                <input
-                  name="name"
-                  placeholder="Tên địa điểm"
-                  value={placeForm.name}
-                  onChange={handlePlaceChange}
-                  className="w-full rounded-2xl border px-4 py-3"
-                  required
-                />
-
-                <select
-                  name="category"
-                  value={placeForm.category}
-                  onChange={handlePlaceChange}
-                  className="w-full rounded-2xl border px-4 py-3"
+          <div className="space-y-6">
+            <div className="rounded-3xl bg-white p-3 shadow">
+              <div className="flex flex-wrap gap-3">
+                <button
+                  onClick={() => setPlaceCategoryTab("all")}
+                  className={`rounded-2xl px-4 py-2 text-sm font-semibold ${
+                    placeCategoryTab === "all"
+                      ? "bg-red-600 text-white"
+                      : "border text-gray-700"
+                  }`}
                 >
-                  {categoryOptions.map((item) => (
-                    <option key={item.value} value={item.value}>
-                      {item.label}
-                    </option>
-                  ))}
-                </select>
+                  Tất cả
+                </button>
 
-                <input
-                  name="lat"
-                  placeholder="Latitude"
-                  value={placeForm.lat}
-                  onChange={handlePlaceChange}
-                  className="w-full rounded-2xl border px-4 py-3"
-                  required
-                />
-
-                <input
-                  name="lng"
-                  placeholder="Longitude"
-                  value={placeForm.lng}
-                  onChange={handlePlaceChange}
-                  className="w-full rounded-2xl border px-4 py-3"
-                  required
-                />
-
-                <input
-                  name="address"
-                  placeholder="Địa chỉ"
-                  value={placeForm.address}
-                  onChange={handlePlaceChange}
-                  className="w-full rounded-2xl border px-4 py-3"
-                />
-
-                <textarea
-                  name="description"
-                  placeholder="Mô tả ngắn"
-                  value={placeForm.description}
-                  onChange={handlePlaceChange}
-                  className="w-full rounded-2xl border px-4 py-3"
-                  rows={3}
-                />
-
-                <input
-                  name="article_title"
-                  placeholder="Tiêu đề bài giới thiệu"
-                  value={placeForm.article_title}
-                  onChange={handlePlaceChange}
-                  className="w-full rounded-2xl border px-4 py-3"
-                />
-
-                <textarea
-                  name="article_content"
-                  placeholder="Bài giới thiệu chi tiết về địa điểm..."
-                  value={placeForm.article_content}
-                  onChange={handlePlaceChange}
-                  className="w-full rounded-2xl border px-4 py-3"
-                  rows={8}
-                />
-
-                <input
-                  name="opening_hours"
-                  placeholder="Giờ mở cửa"
-                  value={placeForm.opening_hours}
-                  onChange={handlePlaceChange}
-                  className="w-full rounded-2xl border px-4 py-3"
-                />
-
-                <input
-                  name="ticket_price"
-                  placeholder="Giá vé"
-                  value={placeForm.ticket_price}
-                  onChange={handlePlaceChange}
-                  className="w-full rounded-2xl border px-4 py-3"
-                />
-
-                <input
-                  name="map"
-                  placeholder="Link chỉ đường"
-                  value={placeForm.map}
-                  onChange={handlePlaceChange}
-                  className="w-full rounded-2xl border px-4 py-3"
-                />
-
-                <input
-                  name="image"
-                  placeholder="Ảnh đại diện (URL nếu có)"
-                  value={placeForm.image}
-                  onChange={handlePlaceChange}
-                  className="w-full rounded-2xl border px-4 py-3"
-                />
-
-                <div className="flex gap-3">
+                {categoryOptions.map((item) => (
                   <button
-                    type="submit"
-                    disabled={savingPlace}
-                    className="flex-1 rounded-2xl bg-red-600 px-4 py-3 font-semibold text-white"
+                    key={item.value}
+                    onClick={() => setPlaceCategoryTab(item.value)}
+                    className={`rounded-2xl px-4 py-2 text-sm font-semibold ${
+                      placeCategoryTab === item.value
+                        ? "bg-red-600 text-white"
+                        : "border text-gray-700"
+                    }`}
                   >
-                    {savingPlace
-                      ? "Đang lưu..."
-                      : editingPlaceId
-                      ? "Cập nhật"
-                      : "Thêm mới"}
+                    {item.label}
                   </button>
-
-                  <button
-                    type="button"
-                    onClick={resetPlaceForm}
-                    className="rounded-2xl border px-4 py-3 font-medium"
-                  >
-                    Làm mới
-                  </button>
-                </div>
-              </form>
+                ))}
+              </div>
             </div>
 
-            <div className="rounded-3xl bg-white p-5 shadow">
-              <h2 className="mb-4 text-xl font-bold">Danh sách địa điểm</h2>
+            <div className="grid gap-6 lg:grid-cols-[430px_1fr]">
+              <div className="rounded-3xl bg-white p-5 shadow">
+                <h2 className="mb-4 text-xl font-bold">
+                  {editingPlaceId ? "Sửa địa điểm" : "Thêm địa điểm"}
+                </h2>
 
-              {loadingPlaces ? (
-                <p className="text-sm text-gray-500">Đang tải dữ liệu...</p>
-              ) : (
-                <div className="space-y-3">
-                  {places.map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex items-start justify-between gap-4 rounded-2xl border p-4"
+                <form onSubmit={handlePlaceSave} className="space-y-3">
+                  <input
+                    name="name"
+                    placeholder="Tên địa điểm"
+                    value={placeForm.name}
+                    onChange={handlePlaceChange}
+                    className="w-full rounded-2xl border px-4 py-3"
+                    required
+                  />
+
+                  <select
+                    name="category"
+                    value={placeForm.category}
+                    onChange={handlePlaceChange}
+                    className="w-full rounded-2xl border px-4 py-3"
+                  >
+                    {categoryOptions.map((item) => (
+                      <option key={item.value} value={item.value}>
+                        {item.label}
+                      </option>
+                    ))}
+                  </select>
+
+                  <input
+                    name="lat"
+                    placeholder="Latitude"
+                    value={placeForm.lat}
+                    onChange={handlePlaceChange}
+                    className="w-full rounded-2xl border px-4 py-3"
+                    required
+                  />
+
+                  <input
+                    name="lng"
+                    placeholder="Longitude"
+                    value={placeForm.lng}
+                    onChange={handlePlaceChange}
+                    className="w-full rounded-2xl border px-4 py-3"
+                    required
+                  />
+
+                  <input
+                    name="address"
+                    placeholder="Địa chỉ"
+                    value={placeForm.address}
+                    onChange={handlePlaceChange}
+                    className="w-full rounded-2xl border px-4 py-3"
+                  />
+
+                  <textarea
+                    name="description"
+                    placeholder="Mô tả ngắn"
+                    value={placeForm.description}
+                    onChange={handlePlaceChange}
+                    className="w-full rounded-2xl border px-4 py-3"
+                    rows={3}
+                  />
+
+                  <input
+                    name="article_title"
+                    placeholder="Tiêu đề bài giới thiệu"
+                    value={placeForm.article_title}
+                    onChange={handlePlaceChange}
+                    className="w-full rounded-2xl border px-4 py-3"
+                  />
+
+                  <textarea
+                    name="article_content"
+                    placeholder="Bài giới thiệu chi tiết về địa điểm..."
+                    value={placeForm.article_content}
+                    onChange={handlePlaceChange}
+                    className="w-full rounded-2xl border px-4 py-3"
+                    rows={8}
+                  />
+
+                  <input
+                    name="opening_hours"
+                    placeholder="Giờ mở cửa"
+                    value={placeForm.opening_hours}
+                    onChange={handlePlaceChange}
+                    className="w-full rounded-2xl border px-4 py-3"
+                  />
+
+                  <input
+                    name="ticket_price"
+                    placeholder="Giá vé"
+                    value={placeForm.ticket_price}
+                    onChange={handlePlaceChange}
+                    className="w-full rounded-2xl border px-4 py-3"
+                  />
+
+                  <input
+                    name="map"
+                    placeholder="Link chỉ đường"
+                    value={placeForm.map}
+                    onChange={handlePlaceChange}
+                    className="w-full rounded-2xl border px-4 py-3"
+                  />
+
+                  <input
+                    name="image"
+                    placeholder="Ảnh đại diện (URL nếu có)"
+                    value={placeForm.image}
+                    onChange={handlePlaceChange}
+                    className="w-full rounded-2xl border px-4 py-3"
+                  />
+
+                  <div className="flex gap-3">
+                    <button
+                      type="submit"
+                      disabled={savingPlace}
+                      className="flex-1 rounded-2xl bg-red-600 px-4 py-3 font-semibold text-white"
                     >
-                      <div className="min-w-0">
-                        <h3 className="font-bold">{item.name}</h3>
+                      {savingPlace
+                        ? "Đang lưu..."
+                        : editingPlaceId
+                        ? "Cập nhật"
+                        : "Thêm mới"}
+                    </button>
 
-                        <p className="text-sm text-gray-500">
-                          {
-                            categoryOptions.find((x) => x.value === item.category)?.label
-                          }{" "}
-                          · {item.lat}, {item.lng}
-                        </p>
+                    <button
+                      type="button"
+                      onClick={resetPlaceForm}
+                      className="rounded-2xl border px-4 py-3 font-medium"
+                    >
+                      Làm mới
+                    </button>
+                  </div>
+                </form>
+              </div>
 
-                        {item.address && (
-                          <p className="mt-1 text-sm text-gray-500">{item.address}</p>
-                        )}
+              <div className="rounded-3xl bg-white p-5 shadow">
+                <h2 className="mb-4 text-xl font-bold">
+                  {placeCategoryTab === "all"
+                    ? "Danh sách tất cả địa điểm"
+                    : `Danh sách ${
+                        categoryOptions.find((x) => x.value === placeCategoryTab)?.label
+                      }`}
+                </h2>
 
-                        {item.description && (
-                          <p className="mt-2 text-sm text-gray-600">
-                            {item.description}
+                {loadingPlaces ? (
+                  <p className="text-sm text-gray-500">Đang tải dữ liệu...</p>
+                ) : (
+                  <div className="space-y-3">
+                    {filteredPlaces.map((item) => (
+                      <div
+                        key={item.id}
+                        className="flex items-start justify-between gap-4 rounded-2xl border p-4"
+                      >
+                        <div className="min-w-0">
+                          <h3 className="font-bold">{item.name}</h3>
+
+                          <p className="text-sm text-gray-500">
+                            {
+                              categoryOptions.find((x) => x.value === item.category)?.label
+                            }{" "}
+                            · {item.lat}, {item.lng}
                           </p>
-                        )}
 
-                        {item.article_title && (
-                          <p className="mt-2 text-sm font-semibold text-gray-800">
-                            Bài viết: {item.article_title}
-                          </p>
-                        )}
+                          {item.address && (
+                            <p className="mt-1 text-sm text-gray-500">{item.address}</p>
+                          )}
+
+                          {item.description && (
+                            <p className="mt-2 text-sm text-gray-600">
+                              {item.description}
+                            </p>
+                          )}
+
+                          {item.article_title && (
+                            <p className="mt-2 text-sm font-semibold text-gray-800">
+                              Bài viết: {item.article_title}
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="flex shrink-0 gap-2">
+                          <button
+                            onClick={() => startPlaceEdit(item)}
+                            className="rounded-xl border px-3 py-2 text-sm"
+                          >
+                            Sửa
+                          </button>
+
+                          <button
+                            onClick={() => handlePlaceDelete(item.id)}
+                            className="rounded-xl bg-red-600 px-3 py-2 text-sm text-white"
+                          >
+                            Xóa
+                          </button>
+                        </div>
                       </div>
+                    ))}
 
-                      <div className="flex shrink-0 gap-2">
-                        <button
-                          onClick={() => startPlaceEdit(item)}
-                          className="rounded-xl border px-3 py-2 text-sm"
-                        >
-                          Sửa
-                        </button>
-
-                        <button
-                          onClick={() => handlePlaceDelete(item.id)}
-                          className="rounded-xl bg-red-600 px-3 py-2 text-sm text-white"
-                        >
-                          Xóa
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-
-                  {!places.length && (
-                    <p className="text-sm text-gray-500">Chưa có dữ liệu.</p>
-                  )}
-                </div>
-              )}
+                    {!filteredPlaces.length && (
+                      <p className="text-sm text-gray-500">
+                        Chưa có dữ liệu trong danh mục này.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
 
         {activeTab === "images" && (
-          <div className="grid gap-6 lg:grid-cols-[430px_1fr]">
-            <div className="rounded-3xl bg-white p-5 shadow">
-              <h2 className="mb-4 text-xl font-bold">Upload ảnh cho địa điểm</h2>
-
-              <form onSubmit={handleImageSave} className="space-y-3">
-                <select
-                  name="place_id"
-                  value={imageForm.place_id}
-                  onChange={handleImageChange}
-                  className="w-full rounded-2xl border px-4 py-3"
-                  required
+          <div className="space-y-6">
+            <div className="rounded-3xl bg-white p-3 shadow">
+              <div className="flex flex-wrap gap-3">
+                <button
+                  onClick={() => setImageCategoryTab("all")}
+                  className={`rounded-2xl px-4 py-2 text-sm font-semibold ${
+                    imageCategoryTab === "all"
+                      ? "bg-red-600 text-white"
+                      : "border text-gray-700"
+                  }`}
                 >
-                  <option value="">Chọn địa điểm</option>
-                  {places.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name}
-                    </option>
-                  ))}
-                </select>
+                  Tất cả
+                </button>
 
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setImageFile(e.target.files?.[0] || null)}
-                  className="w-full rounded-2xl border px-4 py-3"
-                  required
-                />
-
-                <input
-                  name="caption"
-                  placeholder="Chú thích ảnh"
-                  value={imageForm.caption}
-                  onChange={handleImageChange}
-                  className="w-full rounded-2xl border px-4 py-3"
-                />
-
-                <input
-                  name="sort_order"
-                  type="number"
-                  placeholder="Thứ tự hiển thị"
-                  value={imageForm.sort_order}
-                  onChange={handleImageChange}
-                  className="w-full rounded-2xl border px-4 py-3"
-                />
-
-                <div className="flex gap-3">
+                {categoryOptions.map((item) => (
                   <button
-                    type="submit"
-                    disabled={savingImage || uploadingFile}
-                    className="flex-1 rounded-2xl bg-red-600 px-4 py-3 font-semibold text-white"
+                    key={item.value}
+                    onClick={() => setImageCategoryTab(item.value)}
+                    className={`rounded-2xl px-4 py-2 text-sm font-semibold ${
+                      imageCategoryTab === item.value
+                        ? "bg-red-600 text-white"
+                        : "border text-gray-700"
+                    }`}
                   >
-                    {uploadingFile
-                      ? "Đang upload..."
-                      : savingImage
-                      ? "Đang lưu..."
-                      : "Thêm ảnh"}
+                    {item.label}
                   </button>
-
-                  <button
-                    type="button"
-                    onClick={resetImageForm}
-                    className="rounded-2xl border px-4 py-3 font-medium"
-                  >
-                    Làm mới
-                  </button>
-                </div>
-              </form>
+                ))}
+              </div>
             </div>
 
-            <div className="rounded-3xl bg-white p-5 shadow">
-              <h2 className="mb-4 text-xl font-bold">Danh sách ảnh địa điểm</h2>
+            <div className="grid gap-6 lg:grid-cols-[430px_1fr]">
+              <div className="rounded-3xl bg-white p-5 shadow">
+                <h2 className="mb-4 text-xl font-bold">Upload ảnh cho địa điểm</h2>
 
-              {loadingImages ? (
-                <p className="text-sm text-gray-500">Đang tải hình ảnh...</p>
-              ) : (
-                <div className="space-y-6">
-                  {Object.entries(imageGroups).map(([placeName, images]) => (
-                    <div key={placeName} className="space-y-3">
-                      <h3 className="text-lg font-bold">{placeName}</h3>
+                <form onSubmit={handleImageSave} className="space-y-3">
+                  <select
+                    name="place_id"
+                    value={imageForm.place_id}
+                    onChange={handleImageChange}
+                    className="w-full rounded-2xl border px-4 py-3"
+                    required
+                  >
+                    <option value="">Chọn địa điểm</option>
+                    {places.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.name}
+                      </option>
+                    ))}
+                  </select>
 
-                      <div className="grid gap-4 sm:grid-cols-2">
-                        {images.map((img) => (
-                          <div
-                            key={img.id}
-                            className="overflow-hidden rounded-2xl border bg-white"
-                          >
-                            <img
-                              src={img.image_url}
-                              alt={img.caption || placeName}
-                              className="h-44 w-full object-cover"
-                            />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setImageFile(e.target.files?.[0] || null)}
+                    className="w-full rounded-2xl border px-4 py-3"
+                    required
+                  />
 
-                            <div className="space-y-2 p-3">
-                              {img.caption && (
-                                <p className="text-sm text-gray-700">{img.caption}</p>
-                              )}
+                  <input
+                    name="caption"
+                    placeholder="Chú thích ảnh"
+                    value={imageForm.caption}
+                    onChange={handleImageChange}
+                    className="w-full rounded-2xl border px-4 py-3"
+                  />
 
-                              <p className="text-xs text-gray-500">
-                                Thứ tự: {img.sort_order || 0}
-                              </p>
+                  <input
+                    name="sort_order"
+                    type="number"
+                    placeholder="Thứ tự hiển thị"
+                    value={imageForm.sort_order}
+                    onChange={handleImageChange}
+                    className="w-full rounded-2xl border px-4 py-3"
+                  />
 
-                              <button
-                                onClick={() => handleImageDelete(img)}
-                                className="rounded-xl bg-red-600 px-3 py-2 text-sm text-white"
-                              >
-                                Xóa ảnh
-                              </button>
+                  <div className="flex gap-3">
+                    <button
+                      type="submit"
+                      disabled={savingImage || uploadingFile}
+                      className="flex-1 rounded-2xl bg-red-600 px-4 py-3 font-semibold text-white"
+                    >
+                      {uploadingFile
+                        ? "Đang upload..."
+                        : savingImage
+                        ? "Đang lưu..."
+                        : "Thêm ảnh"}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={resetImageForm}
+                      className="rounded-2xl border px-4 py-3 font-medium"
+                    >
+                      Làm mới
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              <div className="rounded-3xl bg-white p-5 shadow">
+                <h2 className="mb-4 text-xl font-bold">
+                  {imageCategoryTab === "all"
+                    ? "Danh sách tất cả hình ảnh"
+                    : `Hình ảnh ${
+                        categoryOptions.find((x) => x.value === imageCategoryTab)?.label
+                      }`}
+                </h2>
+
+                {loadingImages ? (
+                  <p className="text-sm text-gray-500">Đang tải hình ảnh...</p>
+                ) : (
+                  <div className="space-y-6">
+                    {Object.entries(imageGroups).map(([placeName, images]) => (
+                      <div key={placeName} className="space-y-3">
+                        <h3 className="text-lg font-bold">{placeName}</h3>
+
+                        <div className="grid gap-4 sm:grid-cols-2">
+                          {images.map((img) => (
+                            <div
+                              key={img.id}
+                              className="overflow-hidden rounded-2xl border bg-white"
+                            >
+                              <img
+                                src={img.image_url}
+                                alt={img.caption || placeName}
+                                className="h-44 w-full object-cover"
+                              />
+
+                              <div className="space-y-2 p-3">
+                                {img.caption && (
+                                  <p className="text-sm text-gray-700">{img.caption}</p>
+                                )}
+
+                                <p className="text-xs text-gray-500">
+                                  Thứ tự: {img.sort_order || 0}
+                                </p>
+
+                                <button
+                                  onClick={() => handleImageDelete(img)}
+                                  className="rounded-xl bg-red-600 px-3 py-2 text-sm text-white"
+                                >
+                                  Xóa ảnh
+                                </button>
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
 
-                  {!placeImages.length && (
-                    <p className="text-sm text-gray-500">Chưa có ảnh nào.</p>
-                  )}
-                </div>
-              )}
+                    {!filteredPlaceImages.length && (
+                      <p className="text-sm text-gray-500">
+                        Chưa có hình ảnh trong danh mục này.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
