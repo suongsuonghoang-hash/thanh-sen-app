@@ -38,6 +38,10 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState("places");
   const [placeCategoryTab, setPlaceCategoryTab] = useState("all");
   const [imageCategoryTab, setImageCategoryTab] = useState("all");
+  const [placeSearch, setPlaceSearch] = useState("");
+  const [imageSearch, setImageSearch] = useState("");
+  const [placePickerSearch, setPlacePickerSearch] = useState("");
+  const [showPlacePickerList, setShowPlacePickerList] = useState(false);
 
   const [places, setPlaces] = useState([]);
   const [placeImages, setPlaceImages] = useState([]);
@@ -95,13 +99,7 @@ export default function AdminPage() {
       setMessage("Không tải được địa điểm: " + error.message);
       setPlaces([]);
     } else {
-      const list = data || [];
-      setPlaces(list);
-
-      setImageForm((prev) => ({
-        ...prev,
-        place_id: prev.place_id || list[0]?.id || "",
-      }));
+      setPlaces(data || []);
     }
 
     setLoadingPlaces(false);
@@ -180,9 +178,11 @@ export default function AdminPage() {
 
   function resetImageForm() {
     setImageFile(null);
+    setPlacePickerSearch("");
+    setShowPlacePickerList(false);
     setImageForm({
       ...emptyImageForm,
-      place_id: places[0]?.id || "",
+      place_id: "",
     });
   }
 
@@ -207,6 +207,15 @@ export default function AdminPage() {
     setPlaceCategoryTab(item.category || "all");
     setMessage("");
     window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function handlePickPlace(item) {
+    setImageForm((prev) => ({
+      ...prev,
+      place_id: item.id,
+    }));
+    setPlacePickerSearch(item.name || "");
+    setShowPlacePickerList(false);
   }
 
   async function handlePlaceSave(e) {
@@ -393,18 +402,76 @@ export default function AdminPage() {
     }
   }
 
+  const normalizedPlaceSearch = placeSearch.trim().toLowerCase();
+  const normalizedImageSearch = imageSearch.trim().toLowerCase();
+  const normalizedPlacePickerSearch = placePickerSearch.trim().toLowerCase();
+
   const filteredPlaces = useMemo(() => {
-    if (placeCategoryTab === "all") return places;
-    return places.filter((item) => item.category === placeCategoryTab);
-  }, [places, placeCategoryTab]);
+    let result =
+      placeCategoryTab === "all"
+        ? places
+        : places.filter((item) => item.category === placeCategoryTab);
+
+    if (!normalizedPlaceSearch) return result;
+
+    return result.filter((item) => {
+      const name = item.name?.toLowerCase() || "";
+      const address = item.address?.toLowerCase() || "";
+      const description = item.description?.toLowerCase() || "";
+      const articleTitle = item.article_title?.toLowerCase() || "";
+      const articleContent = item.article_content?.toLowerCase() || "";
+
+      return (
+        name.includes(normalizedPlaceSearch) ||
+        address.includes(normalizedPlaceSearch) ||
+        description.includes(normalizedPlaceSearch) ||
+        articleTitle.includes(normalizedPlaceSearch) ||
+        articleContent.includes(normalizedPlaceSearch)
+      );
+    });
+  }, [places, placeCategoryTab, normalizedPlaceSearch]);
 
   const filteredPlaceImages = useMemo(() => {
-    if (imageCategoryTab === "all") return placeImages;
+    let result =
+      imageCategoryTab === "all"
+        ? placeImages
+        : placeImages.filter((item) => item.places?.category === imageCategoryTab);
 
-    return placeImages.filter(
-      (item) => item.places?.category === imageCategoryTab
-    );
-  }, [placeImages, imageCategoryTab]);
+    if (!normalizedImageSearch) return result;
+
+    return result.filter((item) => {
+      const placeName = item.places?.name?.toLowerCase() || "";
+      const category = item.places?.category?.toLowerCase() || "";
+      const caption = item.caption?.toLowerCase() || "";
+      const categoryLabel =
+        categoryOptions.find((x) => x.value === item.places?.category)?.label?.toLowerCase() ||
+        "";
+
+      return (
+        placeName.includes(normalizedImageSearch) ||
+        category.includes(normalizedImageSearch) ||
+        categoryLabel.includes(normalizedImageSearch) ||
+        caption.includes(normalizedImageSearch)
+      );
+    });
+  }, [placeImages, imageCategoryTab, normalizedImageSearch]);
+
+  const filteredPlaceOptions = useMemo(() => {
+    if (!normalizedPlacePickerSearch) return places;
+
+    return places.filter((item) => {
+      const name = item.name?.toLowerCase() || "";
+      const address = item.address?.toLowerCase() || "";
+      const categoryLabel =
+        categoryOptions.find((x) => x.value === item.category)?.label?.toLowerCase() || "";
+
+      return (
+        name.includes(normalizedPlacePickerSearch) ||
+        address.includes(normalizedPlacePickerSearch) ||
+        categoryLabel.includes(normalizedPlacePickerSearch)
+      );
+    });
+  }, [places, normalizedPlacePickerSearch]);
 
   const imageGroups = useMemo(() => {
     const grouped = {};
@@ -528,6 +595,16 @@ export default function AdminPage() {
                     {item.label}
                   </button>
                 ))}
+              </div>
+
+              <div className="mt-4">
+                <input
+                  type="text"
+                  placeholder="Tìm theo tên, địa chỉ, mô tả, bài viết..."
+                  value={placeSearch}
+                  onChange={(e) => setPlaceSearch(e.target.value)}
+                  className="w-full rounded-2xl border px-4 py-3"
+                />
               </div>
             </div>
 
@@ -733,7 +810,7 @@ export default function AdminPage() {
 
                     {!filteredPlaces.length && (
                       <p className="text-sm text-gray-500">
-                        Chưa có dữ liệu trong danh mục này.
+                        Không tìm thấy địa điểm phù hợp.
                       </p>
                     )}
                   </div>
@@ -772,6 +849,16 @@ export default function AdminPage() {
                   </button>
                 ))}
               </div>
+
+              <div className="mt-4">
+                <input
+                  type="text"
+                  placeholder="Tìm theo tên địa điểm, chú thích ảnh..."
+                  value={imageSearch}
+                  onChange={(e) => setImageSearch(e.target.value)}
+                  className="w-full rounded-2xl border px-4 py-3"
+                />
+              </div>
             </div>
 
             <div className="grid gap-6 lg:grid-cols-[430px_1fr]">
@@ -779,20 +866,74 @@ export default function AdminPage() {
                 <h2 className="mb-4 text-xl font-bold">Upload ảnh cho địa điểm</h2>
 
                 <form onSubmit={handleImageSave} className="space-y-3">
-                  <select
-                    name="place_id"
-                    value={imageForm.place_id}
-                    onChange={handleImageChange}
-                    className="w-full rounded-2xl border px-4 py-3"
-                    required
-                  >
-                    <option value="">Chọn địa điểm</option>
-                    {places.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.name}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="space-y-2">
+                    <input
+                      type="text"
+                      placeholder="Gõ để tìm địa điểm..."
+                      value={placePickerSearch}
+                      onFocus={() => setShowPlacePickerList(true)}
+                      onChange={(e) => {
+                        setPlacePickerSearch(e.target.value);
+                        setShowPlacePickerList(true);
+                        setImageForm((prev) => ({
+                          ...prev,
+                          place_id: "",
+                        }));
+                      }}
+                      className="w-full rounded-2xl border px-4 py-3"
+                    />
+
+                    {showPlacePickerList && (
+                      <div className="max-h-56 overflow-y-auto rounded-2xl border bg-white">
+                        {filteredPlaceOptions.length ? (
+                          filteredPlaceOptions.map((item) => {
+                            const isActive = imageForm.place_id === item.id;
+                            const categoryLabel =
+                              categoryOptions.find((x) => x.value === item.category)
+                                ?.label || item.category;
+
+                            return (
+                              <button
+                                key={item.id}
+                                type="button"
+                                onClick={() => handlePickPlace(item)}
+                                className={`flex w-full flex-col items-start border-b px-4 py-3 text-left last:border-b-0 ${
+                                  isActive ? "bg-red-50" : "hover:bg-gray-50"
+                                }`}
+                              >
+                                <span className="font-medium text-gray-900">
+                                  {item.name}
+                                </span>
+                                <span className="text-xs text-gray-500">
+                                  {categoryLabel}
+                                  {item.address ? ` · ${item.address}` : ""}
+                                </span>
+                              </button>
+                            );
+                          })
+                        ) : (
+                          <div className="px-4 py-3 text-sm text-gray-500">
+                            Không tìm thấy địa điểm phù hợp.
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <input
+                      type="hidden"
+                      name="place_id"
+                      value={imageForm.place_id}
+                      readOnly
+                    />
+
+                    {imageForm.place_id && (
+                      <p className="text-xs text-green-700">
+                        Đã chọn:{" "}
+                        {places.find((item) => item.id === imageForm.place_id)?.name ||
+                          "Địa điểm"}
+                      </p>
+                    )}
+                  </div>
 
                   <input
                     type="file"
@@ -896,7 +1037,7 @@ export default function AdminPage() {
 
                     {!filteredPlaceImages.length && (
                       <p className="text-sm text-gray-500">
-                        Chưa có hình ảnh trong danh mục này.
+                        Không tìm thấy hình ảnh phù hợp.
                       </p>
                     )}
                   </div>
