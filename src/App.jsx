@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   MapPin,
   UtensilsCrossed,
@@ -12,11 +12,11 @@ import {
   Share2,
   Building2,
   Landmark,
-  X,
   Image as ImageIcon,
 } from "lucide-react";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import MarkerClusterGroup from "react-leaflet-cluster";
+import { useNavigate } from "react-router-dom";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { supabase } from "./lib/supabase";
@@ -63,15 +63,13 @@ const categoryMeta = {
 };
 
 export default function App() {
+  const navigate = useNavigate();
+
   const [active, setActive] = useState("home");
   const [search, setSearch] = useState("");
   const [places, setPlaces] = useState([]);
   const [loadingPlaces, setLoadingPlaces] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState("all");
-
-  const [selectedPlace, setSelectedPlace] = useState(null);
-  const [selectedPlaceImages, setSelectedPlaceImages] = useState([]);
-  const [loadingPlaceDetail, setLoadingPlaceDetail] = useState(false);
 
   useEffect(() => {
     fetchPlaces();
@@ -86,45 +84,22 @@ export default function App() {
       .order("created_at", { ascending: false });
 
     if (error) {
-  console.error("Lỗi tải places:", error);
-  console.error("error.message =", error.message);
-  console.error("error.details =", error.details);
-  console.error("error.hint =", error.hint);
-  console.error("error.code =", error.code);
-  setPlaces([]);
-} else {
-  console.log("data =", data);
-  setPlaces(data || []);
-}
+      console.error("Lỗi tải places:", error);
+      console.error("error.message =", error.message);
+      console.error("error.details =", error.details);
+      console.error("error.hint =", error.hint);
+      console.error("error.code =", error.code);
+      setPlaces([]);
+    } else {
+      console.log("data =", data);
+      setPlaces(data || []);
+    }
 
     setLoadingPlaces(false);
   }
 
-  async function openPlaceDetail(place) {
-    setSelectedPlace(place);
-    setSelectedPlaceImages([]);
-    setLoadingPlaceDetail(true);
-
-    const { data, error } = await supabase
-      .from("place_images")
-      .select("*")
-      .eq("place_id", place.id)
-      .order("sort_order", { ascending: true });
-
-    if (error) {
-      console.error("Lỗi tải ảnh địa điểm:", error);
-      setSelectedPlaceImages([]);
-    } else {
-      setSelectedPlaceImages(data || []);
-    }
-
-    setLoadingPlaceDetail(false);
-  }
-
-  function closePlaceDetail() {
-    setSelectedPlace(null);
-    setSelectedPlaceImages([]);
-    setLoadingPlaceDetail(false);
+  function openPlaceDetail(place) {
+    navigate(`/place/${place.id}`);
   }
 
   function goToCategory(category) {
@@ -204,113 +179,106 @@ export default function App() {
     selectedCategory === "all" || selectedCategory === "food"
       ? foodPlaces
       : [];
-useEffect(() => {
-  console.log("places:", places);
-  console.log("historicalPlaces:", historicalPlaces);
-}, [places, historicalPlaces]);
+
+  useEffect(() => {
+    console.log("places:", places);
+    console.log("historicalPlaces:", historicalPlaces);
+  }, [places, historicalPlaces]);
+
   return (
-    <>
-      <div className="min-h-screen bg-gradient-to-b from-red-50 via-amber-50 to-white p-4">
-        <div className="mx-auto max-w-sm overflow-hidden rounded-[2rem] border border-red-100 bg-white shadow-2xl">
-          <Header />
+    <div className="min-h-screen bg-gradient-to-b from-red-50 via-amber-50 to-white p-4">
+      <div className="mx-auto max-w-sm overflow-hidden rounded-[2rem] border border-red-100 bg-white shadow-2xl">
+        <Header />
 
-          <div className="border-b border-gray-100 px-4 py-3">
-            <div className="flex items-center gap-2 rounded-2xl bg-gray-50 px-3 py-2">
-              <Search className="h-4 w-4 text-gray-400" />
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Tìm địa điểm..."
-                className="w-full bg-transparent text-sm outline-none"
-              />
-            </div>
+        <div className="border-b border-gray-100 px-4 py-3">
+          <div className="flex items-center gap-2 rounded-2xl bg-gray-50 px-3 py-2">
+            <Search className="h-4 w-4 text-gray-400" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Tìm địa điểm..."
+              className="w-full bg-transparent text-sm outline-none"
+            />
           </div>
-
-          <div className="min-h-[560px] px-4 py-4">
-            {active === "home" && (
-              <Home
-                goToCategory={goToCategory}
-                stats={stats}
-                loading={loadingPlaces}
-                latestPlaces={filteredPlaces.slice(0, 3)}
-                onOpenPlace={openPlaceDetail}
-              />
-            )}
-
-            {active === "places" && (
-              <Places
-                loading={loadingPlaces}
-                historicalItems={visibleHistoricalPlaces}
-                tourismItems={visibleTourismPlaces}
-                cultureItems={visibleCulturePlaces}
-                selectedCategory={selectedCategory}
-                clearFilter={() => setSelectedCategory("all")}
-                onOpenPlace={openPlaceDetail}
-              />
-            )}
-
-            {active === "food" && (
-              <Food
-                loading={loadingPlaces}
-                items={visibleFoodPlaces}
-                selectedCategory={selectedCategory}
-                clearFilter={() => setSelectedCategory("all")}
-                onOpenPlace={openPlaceDetail}
-              />
-            )}
-
-            {active === "map" && (
-              <MapSection
-                loading={loadingPlaces}
-                places={filteredPlaces}
-                onOpenPlace={openPlaceDetail}
-              />
-            )}
-
-            {active === "contact" && <Contact />}
-          </div>
-
-          <nav className="grid grid-cols-5 border-t border-gray-100 bg-white">
-            {tabs.map((tab) => {
-              const Icon = tab.icon;
-              const isActive = active === tab.id;
-
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => {
-                    setActive(tab.id);
-                    if (tab.id === "home" || tab.id === "map" || tab.id === "contact") {
-                      setSelectedCategory("all");
-                    }
-                  }}
-                  className={`flex flex-col items-center gap-1 px-2 py-3 text-[11px] transition ${
-                    isActive ? "text-red-600" : "text-gray-500"
-                  }`}
-                >
-                  <Icon className={`h-5 w-5 ${isActive ? "scale-110" : ""}`} />
-                  <span className={isActive ? "font-semibold" : "font-medium"}>
-                    {tab.label}
-                  </span>
-                </button>
-              );
-            })}
-          </nav>
         </div>
-      </div>
 
-      <AnimatePresence>
-        {selectedPlace && (
-          <PlaceDetailModal
-            place={selectedPlace}
-            images={selectedPlaceImages}
-            loading={loadingPlaceDetail}
-            onClose={closePlaceDetail}
-          />
-        )}
-      </AnimatePresence>
-    </>
-  )
+        <div className="min-h-[560px] px-4 py-4">
+          {active === "home" && (
+            <Home
+              goToCategory={goToCategory}
+              stats={stats}
+              loading={loadingPlaces}
+              latestPlaces={filteredPlaces.slice(0, 3)}
+              onOpenPlace={openPlaceDetail}
+            />
+          )}
+
+          {active === "places" && (
+            <Places
+              loading={loadingPlaces}
+              historicalItems={visibleHistoricalPlaces}
+              tourismItems={visibleTourismPlaces}
+              cultureItems={visibleCulturePlaces}
+              selectedCategory={selectedCategory}
+              clearFilter={() => setSelectedCategory("all")}
+              onOpenPlace={openPlaceDetail}
+            />
+          )}
+
+          {active === "food" && (
+            <Food
+              loading={loadingPlaces}
+              items={visibleFoodPlaces}
+              selectedCategory={selectedCategory}
+              clearFilter={() => setSelectedCategory("all")}
+              onOpenPlace={openPlaceDetail}
+            />
+          )}
+
+          {active === "map" && (
+            <MapSection
+              loading={loadingPlaces}
+              places={filteredPlaces}
+              onOpenPlace={openPlaceDetail}
+            />
+          )}
+
+          {active === "contact" && <Contact />}
+        </div>
+
+        <nav className="grid grid-cols-5 border-t border-gray-100 bg-white">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = active === tab.id;
+
+            return (
+              <button
+                key={tab.id}
+                onClick={() => {
+                  setActive(tab.id);
+                  if (
+                    tab.id === "home" ||
+                    tab.id === "map" ||
+                    tab.id === "contact"
+                  ) {
+                    setSelectedCategory("all");
+                  }
+                }}
+                className={`flex flex-col items-center gap-1 px-2 py-3 text-[11px] transition ${
+                  isActive ? "text-red-600" : "text-gray-500"
+                }`}
+              >
+                <Icon className={`h-5 w-5 ${isActive ? "scale-110" : ""}`} />
+                <span className={isActive ? "font-semibold" : "font-medium"}>
+                  {tab.label}
+                </span>
+              </button>
+            );
+          })}
+        </nav>
+      </div>
+    </div>
+  );
 }
 
 function Header() {
@@ -367,7 +335,11 @@ function Home({ goToCategory, stats, loading, latestPlaces, onOpenPlace }) {
   ];
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="space-y-4"
+    >
       <section className="grid grid-cols-2 gap-3">
         {cards.map((item, index) => {
           const Icon = item.icon;
@@ -724,129 +696,6 @@ function MapSection({ loading, places, onOpenPlace }) {
         </div>
       </div>
     </div>
-  );
-}
-
-function PlaceDetailModal({ place, images, loading, onClose }) {
-  const meta = categoryMeta[place.category] || categoryMeta.tourism;
-
-  return (
-    <motion.div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-3 sm:items-center"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-    >
-      <motion.div
-        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white shadow-2xl"
-        initial={{ y: 40, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        exit={{ y: 40, opacity: 0 }}
-      >
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-4 py-3">
-          <div>
-            <p className="text-xs text-gray-500">{meta.label}</p>
-            <h2 className="text-lg font-bold text-gray-900">{place.name}</h2>
-          </div>
-
-          <button
-            onClick={onClose}
-            className="rounded-xl border px-3 py-2 text-sm text-gray-600"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
-        <div className="space-y-4 p-4">
-          {place.description && (
-            <p className="text-sm leading-6 text-gray-700">{place.description}</p>
-          )}
-
-          {place.address && (
-            <div className="rounded-2xl bg-gray-50 p-3 text-sm text-gray-600">
-              <strong>Địa chỉ:</strong> {place.address}
-            </div>
-          )}
-
-          {(place.opening_hours || place.ticket_price) && (
-            <div className="grid gap-3 sm:grid-cols-2">
-              {place.opening_hours && (
-                <div className="rounded-2xl bg-gray-50 p-3 text-sm text-gray-600">
-                  <strong>Giờ mở cửa:</strong> {place.opening_hours}
-                </div>
-              )}
-
-              {place.ticket_price && (
-                <div className="rounded-2xl bg-gray-50 p-3 text-sm text-gray-600">
-                  <strong>Giá vé:</strong> {place.ticket_price}
-                </div>
-              )}
-            </div>
-          )}
-
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <ImageIcon className="h-4 w-4 text-red-600" />
-              <h3 className="text-sm font-bold text-gray-800">Hình ảnh giới thiệu</h3>
-            </div>
-
-            {loading ? (
-              <div className="rounded-2xl bg-gray-50 p-6 text-center text-sm text-gray-500">
-                Đang tải hình ảnh...
-              </div>
-            ) : images.length ? (
-              <div className="space-y-3">
-                {images.map((img) => (
-                  <div
-                    key={img.id}
-                    className="overflow-hidden rounded-2xl border border-gray-100"
-                  >
-                    <img
-                      src={img.image_url}
-                      alt={img.caption || place.name}
-                      className="h-56 w-full object-cover"
-                    />
-                    {img.caption && (
-                      <div className="px-3 py-2 text-sm text-gray-600">
-                        {img.caption}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-6 text-center text-sm text-gray-500">
-                Chưa có hình ảnh giới thiệu cho địa điểm này.
-              </div>
-            )}
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            {place.map ? (
-              <a
-                href={place.map}
-                target="_blank"
-                rel="noreferrer"
-                className="rounded-2xl bg-red-600 px-4 py-3 text-center text-sm font-semibold text-white"
-              >
-                Chỉ đường
-              </a>
-            ) : (
-              <div className="rounded-2xl bg-gray-100 px-4 py-3 text-center text-sm text-gray-400">
-                Chưa có link chỉ đường
-              </div>
-            )}
-
-            <button
-              onClick={onClose}
-              className="rounded-2xl border px-4 py-3 text-sm font-semibold text-gray-700"
-            >
-              Đóng
-            </button>
-          </div>
-        </div>
-      </motion.div>
-    </motion.div>
   );
 }
 
