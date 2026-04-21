@@ -712,8 +712,8 @@ function Contact() {
         </h3>
 
         <div className="mt-4 space-y-3 text-sm text-gray-600">
-          <ContactRow icon={MapPin} text="Địa chỉ: Trung tâm phường Thành Sen" />
-          <ContactRow icon={Phone} text="Hotline: 0123 456 789" />
+          <ContactRow icon={MapPin} text="Địa chỉ: 72 Phan Đình Phùng, phường Thành Sen, tỉnh Hà Tĩnh" />
+          <ContactRow icon={Phone} text="Hotline: 0239 3881 193" />
           <ContactRow icon={Clock3} text="Thời gian hỗ trợ: Giờ hành chính" />
         </div>
 
